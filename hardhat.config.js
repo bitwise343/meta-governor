@@ -20,14 +20,19 @@ module.exports = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      // forking: {
-      //   url: mainnetUrl
-      // },
-      loggingEnabled: true
+      accounts: kovanAccounts,
+      forking: {
+        url: mainnetUrl
+      },
+      loggingEnabled: true,
     },
     kovan: {
         accounts: kovanAccounts,
         url: kovanUrl,
+    },
+    local: {
+        accounts: kovanAccounts,
+        url: 'http://127.0.0.1:8545/',
     }
   },
   paths: {
@@ -39,6 +44,8 @@ module.exports = {
   solidity: {
     compilers: [
       { version: "0.8.0" },
+      { version: "0.7.5" },
+      { version: "0.5.16" },
     ]
   }
 };

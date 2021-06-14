@@ -10,31 +10,6 @@ contract MetaGovernor {
 
     event AdminChanged(address indexed admin, bool oldStatus, bool newStatus);
 
-    event AaveCommitment(
-        address[] targets,
-        uint256[] values,
-        string[] signatures,
-        bytes[] calldatas,
-        bool[] withDelegateCalls,
-        bytes32 ipfsHash
-    );
-
-    event CompoundCommitment(
-        address[] targets,
-        uint[] values,
-        string[] signatures,
-        bytes[] calldatas,
-        string description
-    );
-
-    event UniCommitment(
-        address[] targets,
-        uint[] values,
-        string[] signatures,
-        bytes[] calldatas,
-        string description
-    );
-
     event AaveProposal(uint256 indexed proposalId);
     event CompoundProposal(uint256 indexed proposalId);
     event UniProposal(uint256 indexed proposalId);
@@ -47,24 +22,13 @@ contract MetaGovernor {
     ICompoundVoter private _compound;
     IUniVoter private _uni;
 
-    uint256 private _delayPeriod;
-
-    uint256 private _aaveNonce;
-    uint256 private _compoundNonce;
-    uint256 private _uniNonce;
-
     mapping (address => bool) private _isAdmin;
-
-    mapping (bytes32 => uint256) private _aaveCommitment;
-    mapping (bytes32 => uint256) private _compoundCommitment;
-    mapping (bytes32 => uint256) private _uniCommitment;
 
     constructor(address aave_, address compound_, address uni_) {
         _isAdmin[msg.sender] = true;
         _aave = IAaveVoter(aave_);
         _compound = ICompoundVoter(compound_);
         _uni = IUniVoter(uni_);
-        _delayPeriod = 17_280; // ~3 days worth of 15s blocks
     }
 
     function isAdmin(address account) public view returns (bool) {
@@ -90,10 +54,6 @@ contract MetaGovernor {
         return address(_uni);
     }
 
-    function delayPeriod() public view returns (uint256) {
-        return _delayPeriod;
-    }
-
     function aaveVote(uint256 proposalId, bool support) public onlyAdmin {
         _aave.submitVote(proposalId, support);
         emit AaveVote(proposalId, support);
@@ -108,20 +68,6 @@ contract MetaGovernor {
         bool[] memory withDelegatecalls,
         bytes32 ipfsHash
     ) public onlyAdmin returns (uint256) {
-        bytes32 commitmentId = _hashAaveProposal(
-            targets,
-            values,
-            signatures,
-            calldatas,
-            withDelegatecalls,
-            ipfsHash
-        );
-        uint256 commitmentBlock = _aaveCommitment[commitmentId];
-        require(commitmentBlock > 0, "Failed: not precommited");
-        require(
-            block.number > commitmentBlock + _delayPeriod,
-            "Failed: delay not passed"
-        );
         uint256 proposalId = _aave.create(
             executor,
             targets,
@@ -133,55 +79,6 @@ contract MetaGovernor {
         );
         emit AaveProposal(proposalId);
         return proposalId;
-    }
-
-    function aaveCommit(
-        address[] memory targets,
-        uint256[] memory values,
-        string[] memory signatures,
-        bytes[] memory calldatas,
-        bool[] memory withDelegatecalls,
-        bytes32 ipfsHash
-    ) public onlyAdmin {
-        bytes32 commitmentId = _hashAaveProposal(
-            targets,
-            values,
-            signatures,
-            calldatas,
-            withDelegatecalls,
-            ipfsHash
-        );
-
-        _aaveCommitment[commitmentId] = block.number;
-
-        emit AaveCommitment(
-            targets,
-            values,
-            signatures,
-            calldatas,
-            withDelegatecalls,
-            ipfsHash
-        );
-    }
-
-    function _hashAaveProposal(
-        address[] memory targets,
-        uint256[] memory values,
-        string[] memory signatures,
-        bytes[] memory calldatas,
-        bool[] memory withDelegatecalls,
-        bytes32 ipfsHash
-    ) private pure returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                targets,
-                values,
-                signatures,
-                calldatas,
-                withDelegatecalls,
-                ipfsHash
-            )
-        );
     }
 
     function compoundCastVote(
@@ -205,19 +102,6 @@ contract MetaGovernor {
         bytes[] memory calldatas,
         string memory description
     ) public onlyAdmin returns (uint256) {
-        bytes32 commitmentId = _hashCompoundProposal(
-            targets,
-            values,
-            signatures,
-            calldatas,
-            description
-        );
-        uint256 commitmentBlock = _compoundCommitment[commitmentId];
-        require(commitmentBlock > 0, "Failed: not precommited");
-        require(
-            block.number > commitmentBlock + _delayPeriod,
-            "Failed: delay not passed"
-        );
         uint256 proposalId = _compound.propose(
             targets,
             values,
@@ -227,48 +111,6 @@ contract MetaGovernor {
         );
         emit CompoundProposal(proposalId);
         return proposalId;
-    }
-
-    function compoundCommit(
-        address[] memory targets,
-        uint[] memory values,
-        string[] memory signatures,
-        bytes[] memory calldatas,
-        string memory description
-    ) public onlyAdmin {
-        bytes32 commitmentId = _hashCompoundProposal(
-            targets,
-            values,
-            signatures,
-            calldatas,
-            description
-        );
-        _compoundCommitment[commitmentId] = block.number;
-        emit CompoundCommitment(
-            targets,
-            values,
-            signatures,
-            calldatas,
-            description
-        );
-    }
-
-    function _hashCompoundProposal(
-        address[] memory targets,
-        uint[] memory values,
-        string[] memory signatures,
-        bytes[] memory calldatas,
-        string memory description
-    ) private pure returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                targets,
-                values,
-                signatures,
-                calldatas,
-                description
-            )
-        );
     }
 
     function uniCastVote(uint256 proposalId, bool support) public onlyAdmin {
@@ -283,19 +125,6 @@ contract MetaGovernor {
         bytes[] memory calldatas,
         string memory description
     ) public onlyAdmin returns (uint256) {
-        bytes32 commitmentId = _hashUniProposal(
-            targets,
-            values,
-            signatures,
-            calldatas,
-            description
-        );
-        uint256 commitmentBlock = _uniCommitment[commitmentId];
-        require(commitmentBlock > 0, "Failed: not precommited");
-        require(
-            block.number > commitmentBlock + _delayPeriod,
-            "Failed: delay not passed"
-        );
         uint256 proposalId = _uni.propose(
             targets,
             values,
@@ -305,48 +134,6 @@ contract MetaGovernor {
         );
         emit UniProposal(proposalId);
         return proposalId;
-    }
-
-    function uniCommit(
-        address[] memory targets,
-        uint[] memory values,
-        string[] memory signatures,
-        bytes[] memory calldatas,
-        string memory description
-    ) public onlyAdmin {
-        bytes32 commitmentId = _hashUniProposal(
-            targets,
-            values,
-            signatures,
-            calldatas,
-            description
-        );
-        _uniCommitment[commitmentId] = block.number;
-        emit UniCommitment(
-            targets,
-            values,
-            signatures,
-            calldatas,
-            description
-        );
-    }
-
-    function _hashUniProposal(
-        address[] memory targets,
-        uint[] memory values,
-        string[] memory signatures,
-        bytes[] memory calldatas,
-        string memory description
-    ) private pure returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                targets,
-                values,
-                signatures,
-                calldatas,
-                description
-            )
-        );
     }
 
     modifier onlyAdmin() {

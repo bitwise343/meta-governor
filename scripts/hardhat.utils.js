@@ -73,6 +73,8 @@ async function deployContract(contractName, constructorArgs = []) {
         contract = await factory.deploy(...constructorArgs);
     }
     await contract.deployed();
+
+    console.log(`Deployed ${contractName} at ${contract.address}`);
     return contract;
 }
 

@@ -12,6 +12,16 @@ task(
 );
 
 task(
+  "chainid",
+  "Prints the chainid of hardhat node"
+).setAction(
+  async (_, hre) => {
+    const chainId = (await hre.ethers.provider.getNetwork()).chainId;
+    console.log(`chainId: ${chainId}`);
+  }
+);
+
+task(
   "keccak",
   "Performs the solidityKeccak hash of --text"
 ).addParam(
